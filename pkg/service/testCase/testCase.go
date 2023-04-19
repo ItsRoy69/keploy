@@ -119,31 +119,22 @@ func (r *TestCase) Get(ctx context.Context, cid, appID, id string) (models.TestC
 }
 
 // readTCS returns all the generated testcases and their mocks from the testCasePath and mockPath directory. It returns all the testcases.
-func (r *TestCase) readTCS(ctx context.Context, testCasePath, mockPath string) ([]models.TestCase, error) {
+func (r *TestCase) readTCS(ctx context.Context, testCasePath, mockPath, tcsType string) ([]models.TestCase, error) {
 	if testCasePath == "" || mockPath == "" || !pkg.IsValidPath(testCasePath) || !pkg.IsValidPath(mockPath) {
 		return nil, fmt.Errorf("file path should be absolute. got testcase path: %s and mock path: %s", pkg.SanitiseInput(testCasePath), pkg.SanitiseInput(mockPath))
 	}
-	res, err := r.mockFS.ReadAll(ctx, testCasePath, mockPath)
+	res, err := r.mockFS.ReadAll(ctx, testCasePath, mockPath, tcsType)
 	if err != nil {
 		r.log.Info(fmt.Sprintf("no testcases found in %s directory.", pkg.SanitiseInput(testCasePath)))
 		return nil, err
 	}
-
-	// go routine got sending telemetry event
-	go func ()  {
-		testCaseCount := len(res)
-		mockCount := 0
-		for _,testCase := range res {
-			mockCount += len(testCase.Mocks)
-		}
-		// sending RecordedTest Telemetry event to Telemetry service.
-		r.tele.RecordedTests(testCaseCount, mockCount, r.client, ctx)
-	}()
-	
 	return res, err
 }
 
-func (r *TestCase) GetAll(ctx context.Context, cid, appID string, offset *int, limit *int, testCasePath, mockPath string) ([]models.TestCase, error) {
+// GetAll fetches and returns testcases for the application.
+//
+// Empty tcsType returns testcases of all types(ex: grpc and http).
+func (r *TestCase) GetAll(ctx context.Context, cid, appID string, offset *int, limit *int, testCasePath, mockPath, tcsType string) ([]models.TestCase, error) {
 	off, lim := 0, 25
 	if offset != nil {
 		off = *offset
@@ -153,10 +144,10 @@ func (r *TestCase) GetAll(ctx context.Context, cid, appID string, offset *int, l
 	}
 
 	if r.testExport {
-		return r.readTCS(ctx, testCasePath, mockPath)
+		return r.readTCS(ctx, testCasePath, mockPath, tcsType)
 	}
 
-	tcs, err := r.tdb.GetAll(ctx, cid, appID, false, off, lim)
+	tcs, err := r.tdb.GetAll(ctx, cid, appID, tcsType, false, off, lim)
 
 	if err != nil {
 		sanitizedAppID := pkg.SanitiseInput(appID)
@@ -268,7 +259,8 @@ func (r *TestCase) Insert(ctx context.Context, t []models.TestCase, testCasePath
 			// defer r.nextYamlIndex.mu.Unlock()
 			lastIndex, ok := r.nextYamlIndex.tcsCount[v.AppID]
 			if !ok {
-				tcs, err := r.GetAll(ctx, v.CID, v.AppID, nil, nil, testCasePath, mockPath)
+				// Empty tcsType returns all types keploy testcases
+				tcs, err := r.GetAll(ctx, v.CID, v.AppID, nil, nil, testCasePath, mockPath, "")
 				if len(tcs) > 0 && err == nil {
 					if len(strings.Split(tcs[len(tcs)-1].ID, "-")) < 1 || len(strings.Split(strings.Split(tcs[len(tcs)-1].ID, "-")[1], ".")) == 0 {
 						return nil, errors.New("failed to decode the last sequence number from yaml test")
@@ -367,6 +359,15 @@ func (r *TestCase) Insert(ctx context.Context, t []models.TestCase, testCasePath
 				return nil, err
 			}
 			inserted = append(inserted, insertedIds...)
+
+			go func() {
+				var mockTypes []string
+				for _, mockElement := range tc[1:] {
+					mockTypes = append(mockTypes, string(mockElement.Kind))
+				}
+				r.tele.RecordedTest(r.client, ctx, len(tc)-1, mockTypes)
+			}()
+
 			continue
 		}
 

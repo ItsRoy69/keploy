@@ -76,6 +76,7 @@ func (srv *Server) PutMock(ctx context.Context, request *proto.PutMockReq) (*pro
 	if err != nil {
 		return nil, err
 	}
+	srv.tele.RecordedMock(srv.client, ctx, request.Mock.Kind)
 	return &proto.PutMockResp{Inserted: 1}, nil
 }
 
@@ -93,9 +94,6 @@ func (srv *Server) GetMocks(ctx context.Context, request *proto.GetMockReq) (*pr
 	response := &proto.GetMockResp{
 		Mocks: res,
 	}
-
-	srv.tele.RecordedMocks(len(mocks), srv.client, ctx)
-
 	return response, nil
 }
 
@@ -254,7 +252,8 @@ func (srv *Server) GetTCS(ctx context.Context, request *proto.GetTCSRequest) (*p
 		}
 	}
 
-	tcs, err = srv.tcSvc.GetAll(ctx, graph.DEFAULT_COMPANY, app, &offset, &limit, request.TestCasePath, request.MockPath)
+	// fetches all testcases for the user application.
+	tcs, err = srv.tcSvc.GetAll(ctx, graph.DEFAULT_COMPANY, app, &offset, &limit, request.TestCasePath, request.MockPath, "")
 	if err != nil {
 		return nil, err
 	}
@@ -362,15 +361,19 @@ func (srv *Server) PostTC(ctx context.Context, request *proto.TestCaseReq) (*pro
 }
 
 func (srv *Server) DeNoise(ctx context.Context, request *proto.TestReq) (*proto.DeNoiseResponse, error) {
-	ctx = context.WithValue(ctx, "reqType", models.Kind(request.Type))
+
 	var body string
+	// Http is the default type of testcase
+	if request.Type == "" {
+		request.Type = string(models.HTTP)
+	}
 	switch request.Type {
 	case string(models.HTTP):
 		body = request.Resp.Body
 	case string(models.GRPC_EXPORT):
 		body = request.GrpcResp.Body
 	}
-	err := srv.svc.DeNoise(ctx, graph.DEFAULT_COMPANY, request.ID, request.AppID, body, utils.GetStringMap(request.Resp.Header), request.TestCasePath)
+	err := srv.svc.DeNoise(ctx, graph.DEFAULT_COMPANY, request.ID, request.AppID, body, utils.GetStringMap(request.Resp.Header), request.TestCasePath, request.Type)
 	if err != nil {
 		return &proto.DeNoiseResponse{Message: err.Error()}, nil
 	}
@@ -379,11 +382,14 @@ func (srv *Server) DeNoise(ctx context.Context, request *proto.TestReq) (*proto.
 
 func (srv *Server) Test(ctx context.Context, request *proto.TestReq) (*proto.TestResponse, error) {
 
-	ctx = context.WithValue(ctx, "reqType", models.Kind(request.Type))
 	var (
 		pass bool
 		err  error
 	)
+	// default value for tcsType is Http
+	if request.Type == "" {
+		request.Type = string(models.HTTP)
+	}
 	switch request.Type {
 	case string(models.HTTP):
 		pass, err = srv.svc.Test(ctx, graph.DEFAULT_COMPANY, request.AppID, request.RunID, request.ID, request.TestCasePath, request.MockPath, models.HttpResp{
@@ -401,14 +407,6 @@ func (srv *Server) Test(ctx context.Context, request *proto.TestReq) (*proto.Tes
 		}, graph.DEFAULT_COMPANY, request.AppID, request.RunID, request.ID, request.TestCasePath, request.MockPath)
 	}
 
-	// pass, err := srv.svc.Test(ctx, graph.DEFAULT_COMPANY, request.AppID, request.RunID, request.ID, request.TestCasePath, request.MockPath, models.HttpResp{
-	// 	StatusCode:    int(request.Resp.StatusCode),
-	// 	Header:        utils.GetStringMap(request.Resp.Header),
-	// 	Body:          request.Resp.Body,
-	// 	StatusMessage: request.Resp.StatusMessage,
-	// 	ProtoMajor:    int(request.Resp.ProtoMajor),
-	// 	ProtoMinor:    int(request.Resp.ProtoMinor),
-	// })
 	if err != nil {
 		return nil, err
 	}

@@ -56,6 +56,17 @@ Visit [https://docs.keploy.io](https://docs.keploy.io/docs/keploy-explained/how-
 
 <img src="https://raw.githubusercontent.com/keploy/docs/main/static/gif/record-replay.gif" width="80%"  alt="Generate Test Case from API call"/>
 
+## Documentation
+
+#### Here you can find the complete [Documentation](https://docs.keploy.io/) which you can reffer 
+
+## Contributing
+Whether you are a community member or not, we would love your point of view! Feel free to first check out our
+- [contribution guidelines](https://github.com/keploy/keploy/blob/main/CONTRIBUTING.md) 
+- The guide outlines the process for **creating an issue** and **submitting a pull request.**
+- [code of conduct](https://github.com/keploy/keploy/blob/main/CODE_OF_CONDUCT.md)
+- By following the guide we've set, your contribution will more likely be accepted if it enhances the project.
+
 ## Features
 
 ### 1. Export tests and mocks and maintain alongside existing tests
@@ -80,7 +91,7 @@ Filters noisy fields in API responses like (timestamps, random values) to ensure
 ```shell
 curl --silent --location "https://github.com/keploy/keploy/releases/latest/download/keploy_darwin_all.tar.gz" | tar xz -C /tmp
 
-sudo mv /tmp/keploy /usr/local/bin && keploy
+sudo mkdir -p /usr/local/bin && sudo mv /tmp/keploy /usr/local/bin && keploy
 ```
 
 ### Linux
@@ -91,7 +102,7 @@ sudo mv /tmp/keploy /usr/local/bin && keploy
 ```shell
 curl --silent --location "https://github.com/keploy/keploy/releases/latest/download/keploy_linux_amd64.tar.gz" | tar xz -C /tmp
 
-sudo mv /tmp/keploy /usr/local/bin && keploy
+sudo mkdir -p /usr/local/bin && sudo mv /tmp/keploy /usr/local/bin && keploy
 ```
 </details>
 
@@ -101,7 +112,7 @@ sudo mv /tmp/keploy /usr/local/bin && keploy
 ```shell
 curl --silent --location "https://github.com/keploy/keploy/releases/latest/download/keploy_linux_arm64.tar.gz" | tar xz -C /tmp
 
-sudo mv /tmp/keploy /usr/local/bin && keploy
+sudo mkdir -p /usr/local/bin && sudo mv /tmp/keploy /usr/local/bin && keploy
 ```
 </details>
 
@@ -264,7 +275,7 @@ One-click deploy sample URL Shortener application sample with Keploy using Gitpo
 
 🕵️‍️ [Why Keploy](https://docs.keploy.io/docs/keploy-explained/why-keploy)
 
-⚙️ [Installation Guide](https://docs.keploy.io/docs/server/introduction)
+⚙️ [Installation Guide](https://docs.keploy.io/docs/server/server-installation)
 
 📖 [Contribution Guide](https://docs.keploy.io/docs/devtools/server-contrib-guide/)
 
